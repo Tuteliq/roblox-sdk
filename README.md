@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".github/banner.png" alt="Tuteliq — AI-Powered Child Safety API" width="600" />
+  <img src=".github/banner.svg" alt="Tuteliq — AI-Powered Child Safety API" width="600" />
 </p>
 
 <h1 align="center">Tuteliq Safety for Roblox</h1>
