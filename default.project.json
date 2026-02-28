@@ -1,0 +1,15 @@
+{
+  "name": "TuteliqSafety",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "TuteliqSafety": {
+        "$path": "src/TuteliqSafety"
+      },
+      "TuteliqSafetyLoader": {
+        "$path": "src/TuteliqSafetyLoader.server.lua"
+      }
+    }
+  }
+}

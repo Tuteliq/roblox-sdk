@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Aftman
+        uses: ok-nick/setup-aftman@v0.4.2
+
+      - name: Install Rojo
+        run: aftman install
+
+      - name: Build .rbxm
+        run: rojo build default.project.json -o TuteliqSafety.rbxm
+
+      - name: Create source zip
+        run: zip -r TuteliqSafety-source.zip src/ LICENSE README.md
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Tuteliq Safety ${{ steps.version.outputs.VERSION }}
+          body: |
+            ## Installation
+
+            **Wally** — Add `TuteliqSafety = "tuteliq/tuteliq-safety@${{ steps.version.outputs.VERSION }}"` to your `wally.toml`
+
+            **Roblox Studio** — Download `TuteliqSafety.rbxm` below, then right-click `ServerScriptService` > Insert from File
+
+            **Manual** — Download `TuteliqSafety-source.zip` and copy `src/` into your project
+
+            See the [full documentation](https://docs.tuteliq.ai/integrations/roblox) for setup instructions.
+          files: |
+            TuteliqSafety.rbxm
+            TuteliqSafety-source.zip
+          draft: false
+          prerelease: false

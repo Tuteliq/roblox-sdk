@@ -1,0 +1,12 @@
+[package]
+name = "tuteliq/tuteliq-safety"
+version = "1.0.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "server"
+description = "AI-powered child safety moderation for Roblox — detects grooming, bullying, and unsafe content in chat"
+license = "MIT"
+authors = ["Tuteliq <support@tuteliq.ai>"]
+include = ["default.project.json", "src/**", "LICENSE"]
+
+[place]
+ServerScriptService = "src/TuteliqSafety"
