@@ -1,0 +1,26 @@
+# Tuteliq Roblox SDK
+
+> AI-powered child safety moderation for Roblox — detects grooming, bullying, and unsafe content in real-time chat.
+
+## What is this?
+A Roblox Luau module for the Tuteliq child safety API. Moderate in-game chat in real-time, detecting bullying, grooming, self-harm, and other harmful content targeting young players.
+
+## Install
+Add the TuteliqSDK module to your Roblox game via the Roblox Creator Store or copy the module into ServerScriptService.
+
+## Quick Start
+local Tuteliq = require(game.ServerScriptService.TuteliqSDK)
+local client = Tuteliq.new({ apiKey = "tq_your_key" })
+local result = client:detectUnsafe({ text = "message to check", ageGroup = "10-12" })
+
+## Key Features
+- Real-time chat moderation
+- Roblox-native Luau module
+- Age-appropriate calibration for young players
+- Bullying, grooming, and unsafe content detection
+- Low-latency for in-game use
+
+## Links
+- Website: https://tuteliq.ai
+- Documentation: https://docs.tuteliq.ai
+- GitHub: https://github.com/Tuteliq/roblox-sdk
