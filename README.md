@@ -86,6 +86,34 @@ alertEvent.Event:Connect(function(data)
 end)
 ```
 
+## Verification (Beta)
+
+Age and Identity Verification are available via the Tuteliq API. These features are in beta and require higher-tier plans.
+
+```lua
+-- Age Verification (Beta — Pro tier, 5 credits)
+local ageResult = Tuteliq:verifyAge({
+    method = "document", -- "document" | "biometric" | "combined"
+    documentUrl = "https://example.com/id-front.jpg",
+})
+
+print(ageResult.verified)       -- true
+print(ageResult.estimated_age)  -- 15
+print(ageResult.age_range)      -- "13-15"
+print(ageResult.is_minor)       -- true
+
+-- Identity Verification (Beta — Business tier, 10 credits)
+local identityResult = Tuteliq:verifyIdentity({
+    documentUrl = "https://example.com/id-front.jpg",
+    selfieUrl = "https://example.com/selfie.jpg",
+})
+
+print(identityResult.verified)               -- true
+print(identityResult.match_score)            -- 0.98
+print(identityResult.liveness_passed)        -- true
+print(identityResult.document_authenticated) -- true
+```
+
 ## How It Works
 
 1. **Chat listener** hooks into `TextChatService` (or legacy `Chat`) automatically
