@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+title: Tuteliq Roblox SDK
+message: "If you use this software, please cite it using this metadata."
+type: software
+authors:
+  - name: Tuteliq
+    website: https://tuteliq.ai
+repository-code: https://github.com/Tuteliq/roblox-sdk
+url: https://tuteliq.ai
+abstract: >-
+  AI-powered child safety moderation for Roblox — detects grooming, bullying, and unsafe content in real-time chat
+keywords:
+  - child safety
+  - Roblox
+  - Luau
+  - game moderation
+  - chat moderation
+  - grooming detection
+  - bullying detection
+  - online safety
+  - age verification
+  - identity verification
+license: MIT
