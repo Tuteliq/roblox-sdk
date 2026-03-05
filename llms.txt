@@ -20,6 +20,10 @@ local result = client:detectUnsafe({ text = "message to check", ageGroup = "10-1
 - Bullying, grooming, and unsafe content detection
 - Low-latency for in-game use
 
+## Verification (Beta)
+- Age Verification: POST /v1/verification/age — Pro tier ($99/mo)+, 5 credits per request. Methods: document, biometric, combined.
+- Identity Verification: POST /v1/verification/identity — Business tier ($349/mo)+, 10 credits per request. Document + selfie matching with liveness check.
+
 ## Links
 - Website: https://tuteliq.ai
 - Documentation: https://docs.tuteliq.ai
