@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  LUNE_VERSION: 0.11.1
+  SELENE_VERSION: 0.32.0
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install selene
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          curl -fsSL -o selene.zip "https://github.com/Kampfkarren/selene/releases/download/${SELENE_VERSION}/selene-${SELENE_VERSION}-linux.zip"
+          unzip -q selene.zip -d "$HOME/.local/bin"
+          chmod +x "$HOME/.local/bin/selene"
+
+      - name: Lint
+        run: selene src examples tests
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lune
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          curl -fsSL -o lune.zip "https://github.com/lune-org/lune/releases/download/v${LUNE_VERSION}/lune-${LUNE_VERSION}-linux-x86_64.zip"
+          unzip -q lune.zip -d "$HOME/.local/bin"
+          chmod +x "$HOME/.local/bin/lune"
+
+      - name: Test
+        run: lune run tests/run
+
+      - name: Version files agree
+        run: |
+          code=$(sed -n 's/^return "\(.*\)"$/\1/p' src/TuteliqSafety/Version.luau)
+          wally=$(sed -n 's/^version = "\(.*\)"$/\1/p' wally.toml)
+          echo "Version.luau=$code wally.toml=$wally"
+          test -n "$code" && test "$code" = "$wally"
