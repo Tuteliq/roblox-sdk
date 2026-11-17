@@ -138,4 +138,22 @@ return {
 		local retried = world.requestsTo("/api/v1/batch/analyze")[2]
 		Expect.equal(#retried.body.items, 2, "retried items")
 	end,
+
+	["a failure that is not retryable is not retried"] = function()
+		local world = Harness.new()
+		local calls = 0
+		world.respond = function(request)
+			if string.find(request.Url, "/batch/analyze", 1, true) then
+				calls += 1
+				return { StatusCode = 400, Body = { error = { code = "VALIDATION", message = "Invalid request" } } }
+			end
+			return { StatusCode = 200, Body = NOTHING }
+		end
+		local TuteliqSafety = start(world)
+		local player = world.addPlayer("PlayerOne", 101)
+		player.Chatted:Fire("an invented ordinary message")
+		Harness.settle(0.3)
+		TuteliqSafety.stop()
+		Expect.equal(calls, 1, "calls")
+	end,
 }

@@ -98,9 +98,17 @@ function Harness.new()
 		return response
 	end
 
-	local Players = { PlayerAdded = newSignal() }
+	local Players = { PlayerAdded = newSignal(), PlayerRemoving = newSignal() }
 	function Players:GetPlayers()
 		return world.players
+	end
+	function Players:GetPlayerByUserId(userId)
+		for _, player in world.players do
+			if player.UserId == userId then
+				return player
+			end
+		end
+		return nil
 	end
 
 	local storage = {}

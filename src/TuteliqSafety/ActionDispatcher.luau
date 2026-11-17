@@ -2,16 +2,24 @@
 
 local Types = require(script.Parent.Types)
 local Logger = require(script.Parent.Logger)
+local Verdict = require(script.Parent.Verdict)
 
 local ActionDispatcher = {}
 ActionDispatcher.__index = ActionDispatcher
 
-local SEVERITY_LEVELS: { [string]: number } = {
-	low = 1,
-	medium = 2,
-	high = 3,
-	critical = 4,
-}
+local MUTE_FROM = Verdict.rank("block")
+local KICK_FROM = Verdict.rank("immediate_intervention")
+
+local function describeParticipants(result: Types.DetectionResult): { { playerName: string, playerId: number } }?
+	if not result.participants then
+		return nil
+	end
+	local described = {}
+	for _, participant in result.participants do
+		table.insert(described, { playerName = participant.Name, playerId = participant.UserId })
+	end
+	return described
+end
 
 function ActionDispatcher.new(config: Types.Config, logger: Logger.Logger, httpClient: any): ActionDispatcher
 	local self = setmetatable({}, ActionDispatcher)
@@ -39,39 +47,39 @@ function ActionDispatcher:getAlertEvent(): BindableEvent?
 	return self._alertEvent
 end
 
+--- Acts on a reported detection. Every detection reaches admins and the
+--- webhook; mute and kick only ever apply to `actionTarget`, a player
+--- harming someone else.
 function ActionDispatcher:dispatch(result: Types.DetectionResult)
-	local severityLevel = SEVERITY_LEVELS[result.severity] or 0
+	local actionRank = Verdict.rank(result.recommendedAction)
 	local player = result.player
+	local target = result.actionTarget
 
 	-- Always log if enabled
 	if self._config.actions.log then
 		self._logger:warn("Detection triggered", {
 			type = result.type,
+			recommendedAction = result.recommendedAction,
 			severity = result.severity,
-			confidence = result.confidence,
 			riskScore = result.riskScore,
+			needsSupport = result.needsSupport,
 			player = if player then player.Name else "unknown",
-			rationale = result.rationale,
 		})
 	end
 
-	-- Notify admins on medium+ severity
-	if self._config.actions.notifyAdmins and severityLevel >= SEVERITY_LEVELS.medium then
+	if self._config.actions.notifyAdmins then
 		self:_notifyAdmins(result)
 	end
 
-	-- Mute on high+ severity
-	if self._config.actions.mute and severityLevel >= SEVERITY_LEVELS.high and player then
-		self:_mutePlayer(player)
+	if self._config.actions.mute and target and actionRank >= MUTE_FROM then
+		self:_mutePlayer(target)
 	end
 
-	-- Kick on critical severity (if enabled)
-	if self._config.actions.kick and severityLevel >= SEVERITY_LEVELS.critical and player then
-		self:_kickPlayer(player, result)
+	if self._config.actions.kick and target and actionRank >= KICK_FROM then
+		self:_kickPlayer(target, result)
 	end
 
-	-- Webhook if configured
-	if self._config.webhookUrl and severityLevel >= SEVERITY_LEVELS.medium then
+	if self._config.webhookUrl then
 		self:_sendWebhook(result)
 	end
 end
@@ -87,6 +95,8 @@ function ActionDispatcher:_notifyAdmins(result: Types.DetectionResult)
 			recommendedAction = result.recommendedAction,
 			playerName = if result.player then result.player.Name else nil,
 			playerId = if result.player then result.player.UserId else nil,
+			needsSupport = result.needsSupport,
+			participants = describeParticipants(result),
 			message = result.message,
 			timestamp = os.time(),
 		})
@@ -128,6 +138,8 @@ function ActionDispatcher:_sendWebhook(result: Types.DetectionResult)
 			recommendedAction = result.recommendedAction,
 			playerName = if result.player then result.player.Name else nil,
 			playerId = if result.player then result.player.UserId else nil,
+			needsSupport = result.needsSupport,
+			participants = describeParticipants(result),
 			gameId = game.GameId,
 			placeId = game.PlaceId,
 			timestamp = os.time(),

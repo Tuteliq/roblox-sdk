@@ -4,11 +4,13 @@ local Types = require(script.Parent.Types)
 
 local Config = {}
 
-local SENSITIVITY_THRESHOLDS: { [Types.SensitivityLevel]: number } = {
-	low = 0.7,
-	medium = 0.5,
-	high = 0.3,
-	maximum = 0.1,
+-- The weakest recommended action each sensitivity reports. "maximum" also
+-- reports a detected signal that came with no action.
+local MINIMUM_ACTIONS: { [Types.SensitivityLevel]: Types.RecommendedAction } = {
+	low = "block",
+	medium = "flag_for_review",
+	high = "monitor",
+	maximum = "monitor",
 }
 
 local DEFAULTS: Types.Config = {
@@ -26,6 +28,7 @@ local DEFAULTS: Types.Config = {
 	batchFlushIntervalSeconds = 5,
 	httpBudgetPerMinute = 400,
 	webhookUrl = nil,
+	getPlayerAge = nil,
 }
 
 function Config.validate(userConfig: Types.UserConfig): (boolean, string?)
@@ -38,7 +41,7 @@ function Config.validate(userConfig: Types.UserConfig): (boolean, string?)
 	end
 
 	if userConfig.sensitivity then
-		if not SENSITIVITY_THRESHOLDS[userConfig.sensitivity] then
+		if not MINIMUM_ACTIONS[userConfig.sensitivity] then
 			return false, "sensitivity must be one of: low, medium, high, maximum"
 		end
 	end
@@ -60,6 +63,10 @@ function Config.validate(userConfig: Types.UserConfig): (boolean, string?)
 		return false, "httpBudgetPerMinute must be at least 10"
 	end
 
+	if userConfig.getPlayerAge ~= nil and type(userConfig.getPlayerAge) ~= "function" then
+		return false, "getPlayerAge must be a function"
+	end
+
 	return true, nil
 end
 
@@ -74,6 +81,7 @@ function Config.merge(userConfig: Types.UserConfig): Types.Config
 		batchFlushIntervalSeconds = userConfig.batchFlushIntervalSeconds or DEFAULTS.batchFlushIntervalSeconds,
 		httpBudgetPerMinute = userConfig.httpBudgetPerMinute or DEFAULTS.httpBudgetPerMinute,
 		webhookUrl = userConfig.webhookUrl,
+		getPlayerAge = userConfig.getPlayerAge,
 	}
 
 	if userConfig.actions then
@@ -88,8 +96,8 @@ function Config.merge(userConfig: Types.UserConfig): Types.Config
 	return config
 end
 
-function Config.getThreshold(sensitivity: Types.SensitivityLevel): number
-	return SENSITIVITY_THRESHOLDS[sensitivity]
+function Config.getMinimumAction(sensitivity: Types.SensitivityLevel): Types.RecommendedAction
+	return MINIMUM_ACTIONS[sensitivity]
 end
 
 return Config

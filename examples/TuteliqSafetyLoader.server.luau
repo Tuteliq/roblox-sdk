@@ -13,7 +13,7 @@ local TuteliqSafety = require(script.Parent.TuteliqSafety)
 -- Start monitoring with your configuration
 TuteliqSafety.start({
 	apiKey = "tq_live_YOUR_API_KEY_HERE", -- Replace with your Tuteliq API key
-	sensitivity = "high",                  -- low | medium | high | maximum
+	sensitivity = "medium",                -- low | medium | high | maximum
 	detect = { "bullying", "grooming", "unsafe" },
 	actions = {
 		mute = true,          -- Mute flagged players temporarily
@@ -23,6 +23,12 @@ TuteliqSafety.start({
 	},
 	muteDurationSeconds = 60,
 	-- webhookUrl = "https://your-webhook.example.com/alerts", -- Optional
+	-- Optional: return a player's age when your game knows it, or nil.
+	-- Ages make grooming analysis more accurate and let mute target the
+	-- right player.
+	-- getPlayerAge = function(player)
+	--     return player:GetAttribute("VerifiedAge")
+	-- end,
 })
 
 -- Optional: Listen for detections to build custom admin UI
@@ -30,7 +36,8 @@ local alertEvent = TuteliqSafety.onDetection()
 if alertEvent then
 	alertEvent.Event:Connect(function(data)
 		-- data contains: type, severity, confidence, riskScore, rationale,
-		--                recommendedAction, playerName, playerId, message, timestamp
+		--                recommendedAction, playerName, playerId, message, timestamp,
+		--                needsSupport, participants
 
 		-- Example: Print to admin console
 		print(string.format(

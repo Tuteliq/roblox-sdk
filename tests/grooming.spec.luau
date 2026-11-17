@@ -147,4 +147,76 @@ return {
 		Expect.falsy(a:GetAttribute("TuteliqMuted"), "Alpha muted")
 		Expect.falsy(b:GetAttribute("TuteliqMuted"), "Bravo muted")
 	end,
+
+	["a disclosure is alerted for support and mutes nobody"] = function()
+		local world = Harness.new()
+		world.respond = function(request)
+			if string.find(request.Url, "/safety/grooming", 1, true) then
+				return {
+					StatusCode = 200,
+					Body = {
+						grooming_risk = "none",
+						risk_score = 0.7,
+						recommended_action = "flag_for_review",
+						speaker_stance = "describing_third_party",
+						disclosure_cleared = true,
+					},
+				}
+			end
+			return { StatusCode = 200, Body = NOTHING }
+		end
+		local TuteliqSafety = start(world, { [1] = 12, [2] = 34 })
+		local alerts = world.alerts()
+		local child = world.addPlayer("Alpha", 1)
+		local adult = world.addPlayer("Bravo", 2)
+		for n = 1, 3 do
+			say(child, n)
+			say(adult, n)
+		end
+		Harness.settle()
+		TuteliqSafety.stop()
+		Expect.truthy(#alerts >= 1, "alerted")
+		Expect.truthy(alerts[1].needsSupport, "needsSupport")
+		Expect.falsy(child:GetAttribute("TuteliqMuted"), "child muted")
+		Expect.falsy(adult:GetAttribute("TuteliqMuted"), "adult muted")
+	end,
+
+	["a whisper is a conversation of its own"] = function()
+		local world = Harness.new()
+		world.respond = function()
+			return { StatusCode = 200, Body = NOTHING }
+		end
+		local TuteliqSafety = start(world)
+		local a = world.addPlayer("Alpha", 1)
+		local b = world.addPlayer("Bravo", 2)
+		for n = 1, 3 do
+			a.Chatted:Fire(`invented whisper {n} from Alpha`, b)
+			say(a, n)
+			b.Chatted:Fire(`invented whisper {n} from Bravo`, a)
+		end
+		Harness.settle()
+		TuteliqSafety.stop()
+		local requests = world.requestsTo("/api/v1/safety/grooming")
+		Expect.equal(#requests, 1, "grooming requests")
+		for _, message in requests[1].body.messages do
+			Expect.truthy(string.find(message.text, "whisper", 1, true), "only whispers")
+		end
+	end,
+
+	["a player who leaves is forgotten"] = function()
+		local world = Harness.new()
+		world.respond = function()
+			return { StatusCode = 200, Body = NOTHING }
+		end
+		local Buffer = world.load("ConversationBuffer")
+		local buffer = Buffer.new()
+		for n = 1, 3 do
+			buffer:push("server", { sender = "Alpha", senderId = 1, text = `a{n}`, timestamp = n, channel = "server" })
+			buffer:push("server", { sender = "Bravo", senderId = 2, text = `b{n}`, timestamp = n, channel = "server" })
+		end
+		Expect.truthy(buffer:shouldAnalyze("server", 1, 2), "ready before leaving")
+		buffer:removeSender(2)
+		Expect.falsy(buffer:shouldAnalyze("server", 1, 2), "ready after leaving")
+		Expect.equal(#buffer:partnersOf("server", 1, 3), 0, "partners after leaving")
+	end,
 }

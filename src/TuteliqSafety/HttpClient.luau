@@ -3,12 +3,42 @@
 local HttpService = game:GetService("HttpService")
 local Types = require(script.Parent.Types)
 local Logger = require(script.Parent.Logger)
+local VERSION = require(script.Parent.Version)
 
 local HttpClient = {}
 HttpClient.__index = HttpClient
 
 local BASE_URL = "https://api.tuteliq.ai"
-local REQUEST_TIMEOUT = 30
+
+--- The API's error envelope, { error = { code, message } }, as one line and its code.
+local function describeError(body: { [string]: any }?, statusCode: number): (string, string?)
+	local err = if body then body.error else nil
+	if type(err) == "table" then
+		local code = if type(err.code) == "string" then err.code else nil
+		local message = if type(err.message) == "string" then err.message else `HTTP {statusCode}`
+		return if code then `{code}: {message}` else message, code
+	elseif type(err) == "string" then
+		return err, nil
+	end
+	return `HTTP {statusCode}`, nil
+end
+
+--- Seconds to wait before retrying: the Retry-After header, else the envelope's retry_after_ms.
+local function retryAfterSeconds(headers: { [string]: string }?, body: { [string]: any }?): number?
+	for name, value in headers or {} do
+		if string.lower(name) == "retry-after" then
+			local seconds = tonumber(value)
+			if seconds then
+				return seconds
+			end
+		end
+	end
+	local err = if body then body.error else nil
+	if type(err) == "table" and type(err.retry_after_ms) == "number" then
+		return err.retry_after_ms / 1000
+	end
+	return nil
+end
 
 function HttpClient.new(apiKey: string, logger: Logger.Logger): HttpClient
 	local self = setmetatable({}, HttpClient)
@@ -23,7 +53,7 @@ function HttpClient:_makeRequest(method: string, path: string, body: { [string]:
 		["Authorization"] = "Bearer " .. self._apiKey,
 		["Content-Type"] = "application/json",
 		["X-Request-ID"] = HttpService:GenerateGUID(false),
-		["User-Agent"] = "Tuteliq-Roblox/1.0.0",
+		["User-Agent"] = `Tuteliq-Roblox/{VERSION}`,
 	}
 
 	local requestBody: string? = nil
@@ -47,6 +77,8 @@ function HttpClient:_makeRequest(method: string, path: string, body: { [string]:
 			statusCode = 0,
 			body = nil,
 			error = tostring(response),
+			errorCode = nil,
+			retryAfterSeconds = nil,
 		}
 	end
 
@@ -61,23 +93,33 @@ function HttpClient:_makeRequest(method: string, path: string, body: { [string]:
 	end
 
 	local isSuccess = response.StatusCode >= 200 and response.StatusCode < 300
-
-	if not isSuccess then
-		local errorMsg = if responseBody and responseBody.error
-			then tostring(responseBody.error)
-			else `HTTP {response.StatusCode}`
-		self._logger:warn("API error", {
-			url = url,
-			status = response.StatusCode,
-			error = errorMsg,
-		})
+	if isSuccess then
+		return {
+			success = true,
+			statusCode = response.StatusCode,
+			body = responseBody,
+			error = nil,
+			errorCode = nil,
+			retryAfterSeconds = nil,
+		}
 	end
 
+	local errorMsg, errorCode = describeError(responseBody, response.StatusCode)
+	local retryAfter = retryAfterSeconds(response.Headers, responseBody)
+	self._logger:warn("API error", {
+		url = url,
+		status = response.StatusCode,
+		error = errorMsg,
+		retryAfter = retryAfter,
+	})
+
 	return {
-		success = isSuccess,
+		success = false,
 		statusCode = response.StatusCode,
 		body = responseBody,
-		error = if not isSuccess then (if responseBody and responseBody.error then tostring(responseBody.error) else `HTTP {response.StatusCode}`) else nil,
+		error = errorMsg,
+		errorCode = errorCode,
+		retryAfterSeconds = retryAfter,
 	}
 end
 
@@ -120,7 +162,7 @@ function HttpClient:sendWebhook(url: string, payload: { [string]: any }): Types.
 	end)
 
 	if not success then
-		return { success = false, statusCode = 0, body = nil, error = tostring(response) }
+		return { success = false, statusCode = 0, body = nil, error = tostring(response), errorCode = nil, retryAfterSeconds = nil }
 	end
 
 	return {
@@ -128,6 +170,8 @@ function HttpClient:sendWebhook(url: string, payload: { [string]: any }): Types.
 		statusCode = response.StatusCode,
 		body = nil,
 		error = nil,
+		errorCode = nil,
+		retryAfterSeconds = nil,
 	}
 end
 
